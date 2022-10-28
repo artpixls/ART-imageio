@@ -1,29 +1,19 @@
 # README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This repository contains a list of [custom image format](https://bitbucket.org/agriggio/art/wiki/Customformats) plugins for the [ART](https://bitbucket.org/agriggio/art) raw processor.
 
-### What is this repository for? ###
+### Structure of the repository ###
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+Each plugin consists of two parts: 
 
-### How do I get set up? ###
+* A `format.txt` configuration file
+* An optional `format` directory containing auxiliary files,
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+where `format` is the name of the file format handled by the plugin (e.g. `exr.txt`).
 
-### Contribution guidelines ###
+### Installation in ART ###
 
-* Writing tests
-* Code review
-* Other guidelines
+Each plugin can be installed separately, by simply copying both the `format.txt` and `format` directory to the `imageio` directory in the ART config folder (e.g. on Linux that would be `$HOME/.config/ART/imageio`).
 
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
+Each plugin uses different external programs and dependencies, that are listed at the beginning of the `format.txt` file. Such dependencies must be installed separately.
+Most of them require at least [Python](http://www.python.org) with the [Pillow](https://python-pillow.org/), [tifffile](https://pypi.org/project/tifffile/), [NumPy](https://numpy.org/) and [PyExiv2](https://pypi.org/project/pyexiv2/) libraries.
