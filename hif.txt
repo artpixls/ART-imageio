@@ -1,0 +1,15 @@
+# -*- conf -*-
+#
+# support for reading HEIF images produced by Canon cameras
+# Requirements:
+# 
+# - Python with the following libraries: Pillow
+#   (available via pip, e.g: python -m pip install pillow)
+#
+# - libheif tools: heif-thumbnailer, heif-info, heif-convert
+#   
+[ART ImageIO]
+Label=Canon HEIF
+Extension=hif
+ReadCommand=python hif/hif_load.py
+Format=png16
