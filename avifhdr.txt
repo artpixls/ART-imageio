@@ -1,0 +1,15 @@
+# -*- conf -*-
+#
+# support for writing HDR AVIF images
+# Requirements:
+# 
+# - The avifenc tool from libavif (https://github.com/AOMediaCodec/libavif)
+#   Windows binaries available at https://jeremylee.sh/bins/
+#   
+[ART ImageIO]
+Label=AVIF (HDR PQ)
+Extension=avif
+SaveFormat=avifhdr
+WriteCommand=avifenc -j all --min 0 --max 10 -s 9 -d 12 --ignore-icc --cicp 9/16/9
+Format=png16
+SaveProfile=avifhdr/rec2100-pq.arp
