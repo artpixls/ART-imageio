@@ -1,0 +1,12 @@
+# -*- conf -*-
+#
+# support for reading FITS images
+# Requirements:
+# 
+# - Python
+# - SiriL (https://siril.org/)
+#   
+[ART ImageIO]
+Label=FITS
+Extension=fit
+ReadCommand=python fits/fits_load.py
