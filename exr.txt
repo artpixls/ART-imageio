@@ -1,0 +1,14 @@
+# -*- conf -*-
+#
+# support for OpenEXR images, both reading and writing.
+# Requirements:
+# 
+# - Python with the following libraries: tifffile, OpenEXR, numpy, pyexiv2
+#   (all available via pip, e.g: python -m pip install tifffile)
+#   
+[ART ImageIO]
+Label=EXR
+Extension=exr
+ReadCommand=python exr/exr_io.py --mode read
+WriteCommand=python exr/exr_io.py --mode write
+SaveProfile=exr/ap0-linear.arp

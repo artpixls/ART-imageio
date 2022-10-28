@@ -1,0 +1,5 @@
+[Version]
+Version=1036
+
+[Color Management]
+OutputProfile=RTv4_ACES-AP0
