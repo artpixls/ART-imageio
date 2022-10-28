@@ -1,0 +1,14 @@
+# -*- conf -*-
+#
+# support for WebP images, both reading and writing.
+# Requirements:
+# 
+# - Python with the following libraries: webp, Pillow, pyexiv2
+#   (all available via pip, e.g: python -m pip install webp)
+#   
+[ART ImageIO]
+Label=WebP
+Extension=webp
+ReadCommand=python webp/webp_io.py -m load
+WriteCommand=python webp/webp_io.py -m save
+Format=tiff
