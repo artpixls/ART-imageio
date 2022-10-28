@@ -18,6 +18,6 @@ Each plugin can be installed separately, by simply copying both the `format.txt`
 Each plugin uses different external programs and dependencies, that are listed at the beginning of the `format.txt` file. Such dependencies must be installed separately.
 Most of them require at least [Python](http://www.python.org) with the [Pillow](https://python-pillow.org/) and [PyExiv2](https://pypi.org/project/pyexiv2/) libraries.
 
-### License ### 
+### License ###
 
 [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
