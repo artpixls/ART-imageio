@@ -23,15 +23,11 @@ def thumbnail(opts):
         if line.startswith('thumbnail:'):
             w, h = [int(t) for t in line[10:].split('x', 1)]
             break
-    if w >= opts.width and h >= opts.height:
-        subprocess.run(['heif-thumbnailer', opts.input, opts.output], check=True)
-        thumb = Image.open(opts.output)
-        thumb = thumb.crop((0, 0, w, h))
-        thumb.save(opts.output)
-    else:
-        subprocess.run(['heif-thumbnailer', '-p',
-                        '-s', f'{opts.width}x{opts.height}',
-                        opts.input, opts.output], check=True)
+    subprocess.run(['heif-thumbnailer', opts.input, opts.output], check=True)
+    thumb = Image.open(opts.output)
+    if w > 0 and h > 0:
+        thumb = thumb.crop((0, 0, thumb.width, int(thumb.width / w * h)))
+    thumb.save(opts.output)
 
 
 def load(opts):
