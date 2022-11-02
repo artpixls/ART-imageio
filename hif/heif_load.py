@@ -13,6 +13,7 @@ try:
     import pillow_heif
 except ImportError:
     import pi_heif as pillow_heif
+pillow_heif.register_avif_opener()
 
 
 @contextmanager
@@ -183,8 +184,8 @@ def read(opts):
     if opts.width and opts.height:
         heif = pillow_heif.thumbnail(heif, max(opts.width, opts.height))
     with Timer('decoding'):
-        heif.convert_to('RGB;16')
-        rgb = numpy.asarray(heif, dtype=numpy.float32) / 65535.0
+        #heif.convert_to('RGB;16')
+        rgb = numpy.asarray(heif, dtype=numpy.float32) / (2**heif.bit_depth - 1)
         end = time.time()
     nclx = get_nclx(heif.info)
     if nclx:

@@ -1,0 +1,13 @@
+# -*- conf -*-
+#
+# support for reading AVIF images 
+# Requirements:
+# 
+# - Python with the hif/heif_load.py script installed (even if you do not want
+#   a HEIF loader) and its requirements (see hif.txt)
+#   
+[ART ImageIO]
+Label=AVIF
+Extension=avif
+ReadCommand=python hif/heif_load.py
+Format=float
