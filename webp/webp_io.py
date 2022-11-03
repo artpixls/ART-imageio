@@ -2,13 +2,13 @@
 
 from PIL import Image
 import webp
-import pyexiv2
 import argparse
+import subprocess
 
 
 def getopts():
     p = argparse.ArgumentParser()
-    p.add_argument('-m', '--mode', choices=['load', 'save'], required=True)
+    p.add_argument('-m', '--mode', choices=['read', 'write'], required=True)
     p.add_argument('input')
     p.add_argument('output')
     p.add_argument('width', type=int, default=0, nargs='?')
@@ -17,17 +17,12 @@ def getopts():
 
 
 def copy_metadata(opts):
-    md = pyexiv2.Image(opts.input)
-    with pyexiv2.Image(opts.output) as out:
-        icc = md.read_icc()
-        if icc:
-            out.modify_icc(icc)
-        out.modify_exif(md.read_exif())
-        out.modify_iptc(md.read_iptc())
-        out.modify_xmp(md.read_xmp())
+    subprocess.run(['exiftool', '-tagsFromFile', opts.input,
+                    '-all', '-icc_profile', '-overwrite_original', opts.output],
+                   check=True)
 
 
-def load(opts):
+def read(opts):
     src = webp.load_image(opts.input, 'RGB')
     if opts.width and opts.height:
         src.thumbnail((opts.width, opts.height))
@@ -35,7 +30,7 @@ def load(opts):
     copy_metadata(opts)
 
 
-def save(opts):
+def write(opts):
     src = Image.open(opts.input)
     out = webp.WebPPicture.from_pil(src)
     out.save(opts.output)
@@ -44,10 +39,10 @@ def save(opts):
 
 def main():
     opts = getopts()
-    if opts.mode == 'load':
-        load(opts)
+    if opts.mode == 'read':
+        read(opts)
     else:
-        save(opts)
+        write(opts)
 
 
 if __name__ == '__main__':

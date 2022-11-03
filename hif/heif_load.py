@@ -4,10 +4,9 @@ import os, sys
 import argparse
 import numpy
 import tifffile
-import pyexiv2
-import email.base64mime
 import struct
 import time
+import subprocess
 from contextlib import contextmanager
 try:
     import pillow_heif
@@ -40,7 +39,7 @@ ACES_AP0_coords = ((0.735, 0.265),
                    (0.322, 0.338))
 
 # ACES AP0 v4 ICC profile with linear TRC    
-ACES_AP0 = b'AAACsGxjbXMEMAAAbW50clJHQiBYWVogB+YABgAIAAcAOQAAYWNzcEFQUEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1sY21zAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMZGVzYwAAARQAAABMY3BydAAAAWAAAABMd3RwdAAAAawAAAAUY2hhZAAAAcAAAAAsclhZWgAAAewAAAAUYlhZWgAAAgAAAAAUZ1hZWgAAAhQAAAAUclRSQwAAAigAAAAQZ1RSQwAAAjgAAAAQYlRSQwAAAkgAAAAQY2hybQAAAlgAAAAkZG1uZAAAAnwAAAAybWx1YwAAAAAAAAABAAAADGVuVVMAAAAwAAAAHABBAEMARQBTAC0AQQBQADAALQBEADYAMABMAGkAbgBlAGEAcgBfAGcAPQAxAC4AMG1sdWMAAAAAAAAAAQAAAAxlblVTAAAAMAAAABwATgBvACAAYwBvAHAAeQByAGkAZwBoAHQALAAgAHUAcwBlACAAZgByAGUAZQBsAHlYWVogAAAAAAAA9tYAAQAAAADTLXNmMzIAAAAAAAEIvwAABE7///ZoAAAFiQAA/gP///y+///+OQAAAuYAANAhWFlaIAAAAAAAAP2rAABcpf///05YWVogAAAAAP//9gn//+pkAADRwlhZWiAAAAAAAAADIgAAuPYAAAIdcGFyYQAAAAAAAAAAAAEAAHBhcmEAAAAAAAAAAAABAABwYXJhAAAAAAAAAAAAAQAAY2hybQAAAAAAAwAAAAC8FQAAQ+sAAAAAAAEAAAAAAAf//+xKbWx1YwAAAAAAAAABAAAADGVuVVMAAAAWAAAAHABSAGEAdwBUAGgAZQByAGEAcABlAGUAAA=='
+ACES_AP0 = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ap0.icc'))
 
 
 def compute_xyz_matrix(key):
@@ -203,15 +202,14 @@ def read(opts):
             rgb = rgb.reshape(-1, 3).transpose()
             rgb = to_ap0 @ rgb
             rgb = rgb.transpose().reshape(*shape).astype(numpy.float32)
-            profile = email.base64mime.decode(ACES_AP0)
+            profile = ACES_AP0
         else:
             profile = None
     with Timer('saving'):
         tifffile.imwrite(opts.output, rgb)
         if profile is not None:
-            md = pyexiv2.Image(opts.output)
-            md.modify_icc(profile)
-            md.close()
+            subprocess.run(['exiftool', '-icc_profile<=' + profile,
+                            '-overwrite_original', opts.output], check=True)
     
 
 def main():

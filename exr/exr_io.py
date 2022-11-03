@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
-import os, sys, io
+import os, sys
 import argparse
 import numpy
 import OpenEXR, Imath
 import tifffile
-import pyexiv2
-import email.base64mime
+import subprocess
 
 
 def getopts():
@@ -42,14 +41,13 @@ REC_709_coords = ((0.640, 0.330),
                   (0.3, 0.6),
                   (0.15, 0.06),
                   (0.313, 0.329))
-# ACES AP0 v4 ICC profile with linear TRC    
-ACES_AP0 = b'AAACsGxjbXMEMAAAbW50clJHQiBYWVogB+YABgAIAAcAOQAAYWNzcEFQUEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1sY21zAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMZGVzYwAAARQAAABMY3BydAAAAWAAAABMd3RwdAAAAawAAAAUY2hhZAAAAcAAAAAsclhZWgAAAewAAAAUYlhZWgAAAgAAAAAUZ1hZWgAAAhQAAAAUclRSQwAAAigAAAAQZ1RSQwAAAjgAAAAQYlRSQwAAAkgAAAAQY2hybQAAAlgAAAAkZG1uZAAAAnwAAAAybWx1YwAAAAAAAAABAAAADGVuVVMAAAAwAAAAHABBAEMARQBTAC0AQQBQADAALQBEADYAMABMAGkAbgBlAGEAcgBfAGcAPQAxAC4AMG1sdWMAAAAAAAAAAQAAAAxlblVTAAAAMAAAABwATgBvACAAYwBvAHAAeQByAGkAZwBoAHQALAAgAHUAcwBlACAAZgByAGUAZQBsAHlYWVogAAAAAAAA9tYAAQAAAADTLXNmMzIAAAAAAAEIvwAABE7///ZoAAAFiQAA/gP///y+///+OQAAAuYAANAhWFlaIAAAAAAAAP2rAABcpf///05YWVogAAAAAP//9gn//+pkAADRwlhZWiAAAAAAAAADIgAAuPYAAAIdcGFyYQAAAAAAAAAAAAEAAHBhcmEAAAAAAAAAAAABAABwYXJhAAAAAAAAAAAAAQAAY2hybQAAAAAAAwAAAAC8FQAAQ+sAAAAAAAEAAAAAAAf//+xKbWx1YwAAAAAAAAABAAAADGVuVVMAAAAWAAAAHABSAGEAdwBUAGgAZQByAGEAcABlAGUAAA=='
 
-REC_709 = b'AAACwGxjbXMEMAAAbW50clJHQiBYWVogB+YACQANABMAKQAUYWNzcEFQUEwAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1sY21zAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANZGVzYwAAASAAAAA4Y3BydAAAAVgAAAA2d3RwdAAAAZAAAAAUY2hhZAAAAaQAAAAsclhZWgAAAdAAAAAUYlhZWgAAAeQAAAAUZ1hZWgAAAfgAAAAUclRSQwAAAgwAAAAQZ1RSQwAAAgwAAAAQYlRSQwAAAgwAAAAQY2hybQAAAhwAAAAkZG1kZAAAAkAAAABaZG1uZAAAApwAAAAibWx1YwAAAAAAAAABAAAADGVuVVMAAAAcAAAAHABMAGkAbgBlAGEAcgAgAFIAZQBjAC4ANwAwADltbHVjAAAAAAAAAAEAAAAMZW5VUwAAABoAAAAcAFAAdQBiAGwAaQBjACAARABvAG0AYQBpAG4AAFhZWiAAAAAAAAD21gABAAAAANMtc2YzMgAAAAAAAQxCAAAF3v//8yUAAAeTAAD9kP//+6H///2iAAAD3AAAwG5YWVogAAAAAAAAb6AAADj1AAADkFhZWiAAAAAAAAAknwAAD4QAALbDWFlaIAAAAAAAAGKXAAC3hwAAGNlwYXJhAAAAAAAAAAAAAQAAY2hybQAAAAAAAwAAAACj1wAAVHsAAEzNAACZmgAAJmYAAA9cbWx1YwAAAAAAAAABAAAADGVuVVMAAAA+AAAAHAAjAHUAcwAvAHAAaQB4AGwAcwAvAEEAUgBUACMAMQAuADAAMAAwADAAMAAwADoAMAAuADAAMAAwADAAMAAhAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAYAAAAcAEEAUgBUAAA='
+def pth(fn):
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), fn))
 
 _profile_dict = {
-    ACES_AP0_coords : ACES_AP0,
-    REC_709_coords : REC_709,
+    ACES_AP0_coords : pth('ap0.icc'),
+    REC_709_coords : pth('rec709.icc'),
 }
 def getprofile(header):
     try:
@@ -57,9 +55,9 @@ def getprofile(header):
         def mkt(p):
             return (round(p.x, 3), round(p.y, 3))
         key = (mkt(c.red), mkt(c.green), mkt(c.blue), mkt(c.white))
-        data = _profile_dict.get(key)
-        if data is not None:
-            return email.base64mime.decode(data)
+        fn = _profile_dict.get(key)
+        if fn is not None:
+            return fn
     except KeyError as e:
         sys.stderr.write('ERROR: %s\n' % e)
     return None
@@ -116,14 +114,13 @@ def read(opts):
         rgb = rgb.reshape(-1, 3).transpose()
         rgb = to_ap0 @ rgb
         rgb = rgb.transpose().reshape(*shape).astype(numpy.float32)
-        profile = email.base64mime.decode(ACES_AP0)
+        profile = _profile_dict[ACES_AP0_coords]
     else:
         profile = getprofile(header)
     tifffile.imwrite(opts.output, rgb)
     if profile is not None:
-        md = pyexiv2.Image(opts.output)
-        md.modify_icc(profile)
-        md.close()
+        subprocess.run(['exiftool', '-icc_profile<=' + profile,
+                        '-overwrite_original', opts.output], check=True)
 
 
 def write(opts):

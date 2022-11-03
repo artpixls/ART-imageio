@@ -16,7 +16,7 @@ where `format` is the name of the file format handled by the plugin (e.g. `exr.t
 Each plugin can be installed separately, by simply copying both the `format.txt` and `format` directory to the `imageio` directory in the ART config folder (e.g. on Linux that would be `$HOME/.config/ART/imageio`).
 
 Each plugin uses different external programs and dependencies, that are listed at the beginning of the `format.txt` file. Such dependencies must be installed separately.
-Most of them require at least [Python](http://www.python.org) with the [Pillow](https://python-pillow.org/) and [PyExiv2](https://pypi.org/project/pyexiv2/) libraries.
+Most of them require at least [Python](http://www.python.org) and [Exiftool](http://exiftool.org).
 
 ### License ###
 

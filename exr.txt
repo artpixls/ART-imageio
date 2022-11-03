@@ -3,8 +3,10 @@
 # support for OpenEXR images, both reading and writing.
 # Requirements:
 # 
-# - Python with the following libraries: tifffile, OpenEXR, numpy, pyexiv2
+# - Python with the following libraries: tifffile, OpenEXR, numpy
 #   (all available via pip, e.g: python -m pip install tifffile)
+#
+# - exiftool
 #   
 [ART ImageIO]
 Label=EXR
