@@ -1,0 +1,20 @@
+# -*- conf -*-
+#
+# support for JPEG-XL images, both reading and writing.
+# (no metadata on writing though)
+#
+# Requirements:
+# 
+# - Python with the following libraries: tifffile numpy pyexiv2
+#   (all available via pip, e.g: python -m pip install tifffile)
+#
+# - the cjxl and djxl command-line tools from libjxl
+#   (https://github.com/libjxl/libjxl)
+#
+[ART ImageIO]
+Label=JPEG-XL
+Extension=jxl
+ReadCommand=python jxl/jxl_io.py --mode read
+WriteCommand=python jxl/jxl_io.py --mode write
+Format=tiff
+SaveProfile=jxl/srgb.arp
