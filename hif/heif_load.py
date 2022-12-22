@@ -12,6 +12,10 @@ try:
     import pillow_heif
 except ImportError:
     import pi_heif as pillow_heif
+try:
+    open_heif = pillow_heif.open_heif
+except AttributeError:
+    open_heif = pillow_heif.open    
 pillow_heif.register_avif_opener()
 
 
@@ -177,13 +181,12 @@ def linearize(data, nclx):
 
 
 def read(opts):
-    heif = pillow_heif.open(opts.input, convert_hdr_to_8bit=False)
+    heif = open_heif(opts.input, convert_hdr_to_8bit=False)
     width, height = heif.size
     print(f'found image: {width}x{height} pixels, {heif.bit_depth} bits')
     if opts.width and opts.height:
         heif = pillow_heif.thumbnail(heif, max(opts.width, opts.height))
     with Timer('decoding'):
-        #heif.convert_to('RGB;16')
         rgb = numpy.asarray(heif, dtype=numpy.float32) / (2**heif.bit_depth - 1)
         end = time.time()
     nclx = get_nclx(heif.info)
