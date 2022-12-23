@@ -7,6 +7,7 @@ import tifffile
 import struct
 import time
 import subprocess
+import tempfile
 from contextlib import contextmanager
 try:
     import pillow_heif
@@ -93,6 +94,10 @@ def getmatrix(nclx):
                                    nclx.white_xy])
     else:
         return None
+
+
+def get_profile(info):
+    return info.get('icc_profile')
 
 
 def pq(a, inv):
@@ -190,11 +195,20 @@ def read(opts):
         rgb = numpy.asarray(heif, dtype=numpy.float32) / (2**heif.bit_depth - 1)
         end = time.time()
     nclx = get_nclx(heif.info)
+    profile = None
+    del_profile = False
     if nclx:
         print('nclx profile: %s' % nclx)
     else:
-        print('no nclx profile found, assuming sRGB')
-        nclx = sRGB_nclx
+        prof = get_profile(heif.info)
+        if not prof:
+            print('no profile found, assuming sRGB')
+            nclx = sRGB_nclx
+        else:
+            fd, profile = tempfile.mkstemp()
+            with open(fd, 'wb') as out:
+                out.write(prof)
+            del_profile = True
     with Timer('linearization'):
         to_xyz = getmatrix(nclx)
         rgb = linearize(rgb, nclx)
@@ -206,13 +220,13 @@ def read(opts):
             rgb = to_ap0 @ rgb
             rgb = rgb.transpose().reshape(*shape).astype(numpy.float32)
             profile = ACES_AP0
-        else:
-            profile = None
     with Timer('saving'):
         tifffile.imwrite(opts.output, rgb)
         if profile is not None:
             subprocess.run(['exiftool', '-icc_profile<=' + profile,
                             '-overwrite_original', opts.output], check=True)
+    if del_profile:
+        os.unlink(profile)
     
 
 def main():
