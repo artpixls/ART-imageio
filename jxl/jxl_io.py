@@ -16,6 +16,7 @@ def getopts():
     p.add_argument('output')
     p.add_argument('width', type=int, nargs='?')
     p.add_argument('height', type=int, nargs='?')
+    p.add_argument('--hdr', action='store_true')
     return p.parse_args()
 
 
@@ -113,7 +114,9 @@ def write(opts):
         out.write(b'65535\n')
         out.write(data.tobytes('C'))
 
-    subprocess.run(['cjxl', '--container=1', name, opts.output], check=True)
+    colorspace = [] if not opts.hdr else ['-x', 'color_space=RGB_D65_202_Per_PeQ']
+    subprocess.run(['cjxl', '--container=1', name, opts.output] + colorspace,
+                   check=True)
     os.unlink(name)
     
     subprocess.run(['exiftool', '-tagsFromFile', opts.input,

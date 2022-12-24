@@ -4,8 +4,7 @@
 #
 # Requirements:
 #
-# - the cjxl command-line tool from libjxl
-#   (https://github.com/libjxl/libjxl)
+# - the jxl handler in this directory and its dependencies
 #
 # - the avifhdr folder in this repository
 #
@@ -13,6 +12,6 @@
 Label=JPEG-XL (HDR PQ)
 Extension=jxl
 SaveFormat=jxlhdr
-WriteCommand=python3 jxlhdr/jxlhdr.py
-Format=png16
+WriteCommand=python3 jxl/jxl_io.py -m write --hdr
+Format=float
 SaveProfile=avifhdr/rec2100-pq.arp
