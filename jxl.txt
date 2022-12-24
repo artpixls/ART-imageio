@@ -17,5 +17,5 @@ Label=JPEG-XL
 Extension=jxl
 ReadCommand=python jxl/jxl_io.py --mode read
 WriteCommand=python jxl/jxl_io.py --mode write
-Format=tiff
+Format=float
 SaveProfile=jxl/srgb.arp

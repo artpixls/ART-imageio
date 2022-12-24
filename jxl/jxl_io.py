@@ -19,10 +19,63 @@ def getopts():
     return p.parse_args()
 
 
+def pq(a, inv):
+    m1 = 2610.0 / 16384.0
+    m2 = 2523.0 / 32.0
+    c1 = 107.0 / 128.0
+    c2 = 2413.0 / 128.0
+    c3 = 2392.0 / 128.0
+    if not inv:
+        # assume 1.0 is 100 nits, normalise so that 1.0 is 10000 nits
+        a /= 100.0
+        # apply the PQ curve
+        aa = numpy.power(a, m1)
+        res = numpy.power((c1 + c2 * aa)/(1.0 + c3 * aa), m2)
+    else:
+        p = numpy.power(a, 1.0/m2)
+        aa = numpy.fmax(p-c1, 0.0) / (c2 - c3 * p)
+        res = numpy.power(aa, 1.0/m1)
+        res *= 100
+    return res
+
+
+def srgb(a, inv):
+    if not inv:
+        a = numpy.fmax(numpy.fmin(a, 1.0), 0.0)
+        return numpy.where(a <= 0.0031308,
+                           12.92 * a,
+                           1.055 * numpy.power(a, 1.0/2.4)-0.055)
+    else:
+        return numpy.where(a <= 0.04045, a / 12.92,
+                           numpy.power((a + 0.055) / 1.055, 2.4))
+
+
+def get_profile(opts):
+    res = subprocess.run(['jxlinfo', opts.input], stdout=subprocess.PIPE,
+                         check=True, encoding='utf-8')
+    profiles = {
+        ('D65', 'sRGB primaries', 'sRGB transfer function') : ('rec709.icc', srgb),
+        ('D65', 'Rec.2100 primaries', 'PQ transfer function') : ('rec2100.icc', pq)
+        }
+    for line in res.stdout.splitlines():
+        if line.startswith('Color space: '):
+            bits = line[13:].split(', ')
+            if bits[0] == 'RGB':
+                key = tuple(bits[1:-1])
+                return profiles.get(key)
+    return None
+
+
+def linearize(img, fun):
+    shape = img.shape
+    img = img.reshape(-1)
+    img = fun(img, True)
+    return img.reshape(shape)
+    
+
 def read(opts):
     fd, name = tempfile.mkstemp(suffix='.ppm')
-    os.close(fd)
-    
+    os.close(fd)    
     subprocess.run(['djxl', '--bits_per_sample=16',
                     opts.input, name], check=True)
     with open(name, 'rb') as f:
@@ -33,14 +86,23 @@ def read(opts):
     img = numpy.frombuffer(info[-1],
                            dtype=numpy.dtype(numpy.uint16).newbyteorder('>'))
     img = img.reshape((int(info[2]), int(info[1]), 3))
+    img = img.astype(numpy.float32) / 65535.0
+
+    profile = get_profile(opts)
+    if profile:
+        img = linearize(img, profile[1])
     tifffile.imwrite(opts.output, img)
+    if profile:
+        p = os.path.abspath(os.path.join(os.path.dirname(__file__), profile[0]))
+        subprocess.run(['exiftool', '-icc_profile<=' + p,
+                        '-overwrite_original', opts.output], check=True)
     
 
 def write(opts):
     fd, name = tempfile.mkstemp(suffix='.ppm')
     os.close(fd)
 
-    data = tifffile.imread(opts.input)
+    data = tifffile.imread(opts.input) * 65535.0
     data = data.astype(numpy.dtype(numpy.uint16).newbyteorder('>'))
     with open(name, 'wb') as out:
         out.write(b'P6 ')
