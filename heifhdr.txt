@@ -1,0 +1,17 @@
+# -*- conf -*-
+#
+# support for writing HDR HEIF images
+# Requirements:
+# 
+# - Python with the following libraries: tifffile pillow_heif numpy
+#   (available via pip, e.g: python -m pip install tifffile)
+#
+# - exiftool
+#   
+[ART ImageIO]
+Label=HEIF (HDR PQ)
+Extension=hif
+SaveFormat=heifhdr
+WriteCommand=python hif/heif_load.py --encode
+Format=float
+SaveProfile=avifhdr/rec2100-pq.arp

@@ -36,6 +36,7 @@ def getopts():
     p.add_argument('output')
     p.add_argument('width', nargs='?', default=0, type=int)
     p.add_argument('height', nargs='?', default=0, type=int)
+    p.add_argument('--encode', action='store_true')
     return p.parse_args()
 
 ACES_AP0_coords = ((0.735, 0.265),
@@ -81,6 +82,13 @@ sRGB_nclx = NclxProfile(
      0.15000000596046448, 0.05999999865889549,
      0.3127000033855438, 0.32899999618530273))
 
+rec2100_pq_nclx = struct.pack('BiiiBffffffff',
+                              1, 9, 16, 9, 1,
+                              0.708, 0.292,
+                              0.170, 0.797,
+                              0.131, 0.046,
+                              0.3127, 0.3290
+                              )
 
 def get_nclx(info):
     try:
@@ -229,9 +237,61 @@ def read(opts):
         os.unlink(profile)
     
 
+def write(opts):
+    with Timer('loading'):
+        data = tifffile.imread(opts.input)
+    height, width = data.shape[:2]
+    data *= 65535.0
+    data = data.astype(numpy.uint16)
+    with Timer('encoding'):
+        heif_file = pillow_heif.from_bytes(mode="RGB;16",
+                                           size=(width, height),
+                                           data=data.tobytes())
+    heif_file.info['nclx_profile'] = rec2100_pq_nclx
+    with Timer('saving'):
+        ffi = pillow_heif.heif.ffi
+        lib = pillow_heif.heif.lib
+        @staticmethod
+        def my_save(ctx, img_list, primary_index, **kwargs):
+            enc_options = lib.heif_encoding_options_alloc()
+            enc_options = ffi.gc(enc_options, lib.heif_encoding_options_free)
+            enc_options.macOS_compatibility_workaround_no_nclx_profile = 0
+            for i, img in enumerate(img_list):
+                pillow_heif.heif.set_color_profile(img.heif_img, img.info)
+                
+                p_img_handle = ffi.new("struct heif_image_handle **")
+                error = lib.heif_context_encode_image(ctx.ctx,
+                                                      img.heif_img,
+                                                      ctx.encoder,
+                                                      enc_options, p_img_handle)
+                pillow_heif.heif.check_libheif_error(error)
+                new_img_handle = ffi.gc(p_img_handle[0],
+                                        lib.heif_image_handle_release)
+                exif = img.info["exif"]
+                xmp = img.info["xmp"]
+                if i == primary_index:
+                    if i:
+                        lib.heif_context_set_primary_image(ctx.ctx, new_img_handle)
+                    if kwargs.get("exif", -1) != -1:
+                        exif = kwargs["exif"]
+                        if isinstance(exif, Image.Exif):
+                            exif = exif.tobytes()
+                    if kwargs.get("xmp", -1) != -1:
+                        xmp = kwargs["xmp"]
+                pillow_heif.heif.set_exif(ctx, new_img_handle, exif)
+                pillow_heif.heif.set_xmp(ctx, new_img_handle, xmp)
+                pillow_heif.heif.set_metadata(ctx, new_img_handle, img.info)
+
+        pillow_heif.HeifFile._save = my_save
+        heif_file.save(opts.output, quality=80)
+
+
 def main():
     opts = getopts()
-    read(opts)
+    if opts.encode:
+        write(opts)
+    else:
+        read(opts)
 
 
 if __name__ == '__main__':
