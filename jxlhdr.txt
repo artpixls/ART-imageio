@@ -12,6 +12,6 @@
 Label=JPEG-XL (HDR PQ)
 Extension=jxl
 SaveFormat=jxlhdr
-WriteCommand=python3 jxl/jxl_io.py -m write --hdr
+WriteCommand=python jxl/jxl_io.py -m write --hdr
 Format=float
 SaveProfile=avifhdr/rec2100-pq.arp
