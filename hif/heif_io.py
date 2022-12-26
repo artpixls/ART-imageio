@@ -36,7 +36,7 @@ def getopts():
     p.add_argument('output')
     p.add_argument('width', nargs='?', default=0, type=int)
     p.add_argument('height', nargs='?', default=0, type=int)
-    p.add_argument('--encode', action='store_true')
+    p.add_argument('-m', '--mode', choices=['read', 'write'], default='read')
     return p.parse_args()
 
 ACES_AP0_coords = ((0.735, 0.265),
@@ -288,7 +288,7 @@ def write(opts):
 
 def main():
     opts = getopts()
-    if opts.encode:
+    if opts.mode == 'write':
         write(opts)
     else:
         read(opts)

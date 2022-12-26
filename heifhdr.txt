@@ -12,6 +12,6 @@
 Label=HEIF (HDR PQ)
 Extension=hif
 SaveFormat=heifhdr
-WriteCommand=python hif/heif_load.py --encode
+WriteCommand=python hif/heif_io.py -m write
 Format=float
 SaveProfile=avifhdr/rec2100-pq.arp
