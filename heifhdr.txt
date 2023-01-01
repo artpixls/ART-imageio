@@ -1,6 +1,8 @@
 # -*- conf -*-
 #
-# support for writing HDR HEIF images
+# support for writing HEIF images that can be displayed on a PQ HDR-TV
+# with a peak luminance of 1000 nits
+#
 # Requirements:
 # 
 # - Python with the following libraries: tifffile pillow_heif numpy
@@ -9,9 +11,9 @@
 # - exiftool
 #   
 [ART ImageIO]
-Label=HEIF (HDR PQ)
+Label=HEIF (PQ HDR-TV 1000 nits)
 Extension=hif
 SaveFormat=heifhdr
-WriteCommand=python hif/heif_io.py -m write
+WriteCommand=python hif/heif_io.py -m write -p 1000
 Format=float
-SaveProfile=avifhdr/rec2100-pq.arp
+SaveProfile=heifhdr/rec2020-lin.arp

@@ -37,6 +37,8 @@ def getopts():
     p.add_argument('width', nargs='?', default=0, type=int)
     p.add_argument('height', nargs='?', default=0, type=int)
     p.add_argument('-m', '--mode', choices=['read', 'write'], default='read')
+    #p.add_argument('-w', '--target-white-luminance', type=float, default=100.0)
+    p.add_argument('-p', '--peak-luminance', type=float, default=1000.0)
     return p.parse_args()
 
 ACES_AP0_coords = ((0.735, 0.265),
@@ -90,6 +92,13 @@ rec2100_pq_nclx = struct.pack('BiiiBffffffff',
                               0.3127, 0.3290
                               )
 
+rec2020_to_xyz = numpy.array([
+    [0.6734241,  0.1656411,  0.1251286],
+    [0.2790177,  0.6753402,  0.0456377],
+    [-0.0019300,  0.0299784, 0.7973330]
+    ], dtype=numpy.float32)
+
+
 def get_nclx(info):
     try:
         return NclxProfile(struct.unpack('BiiiBffffffff', info['nclx_profile']))
@@ -139,9 +148,11 @@ def srgb(a, inv):
                            numpy.power((a + 0.055) / 1.055, 2.4))
 
 
-def rec709(a, inv):
+def rec709(a, inv, clip=True):
     if not inv:
-        a = numpy.fmax(numpy.fmin(a, 1.0), 0.0)
+        a = numpy.fmax(a, 0.0)
+        if clip:
+            a = numpy.fmin(a, 1.0)
         return numpy.where(a < 0.018,
                            4.5 * a,
                            1.099 * numpy.power(a, 0.45) - 0.099)
@@ -149,6 +160,10 @@ def rec709(a, inv):
         return numpy.where(a < 0.081,
                            a / 4.5,
                            numpy.power((a + 0.099) / 1.099, 1.0/0.45))
+
+
+def rec1886(a, inv):
+    return numpy.power(numpy.fmax(a, 0.0), 1.0/2.4 if not inv else 2.4)
 
 
 def hlg(a, inv):
@@ -235,12 +250,22 @@ def read(opts):
                             '-overwrite_original', opts.output], check=True)
     if del_profile:
         os.unlink(profile)
-    
+
+
+def st_2084(data, peak_luminance):
+    # ITU-R BT.2390-2, section 5.3.1
+    scale = peak_luminance / 10000.0 * 59.49080238715383
+    data *= scale
+    shape = data.shape
+    res = pq(rec1886(rec709(data.reshape(-1), False, False), True), False)
+    return res.reshape(shape)
+
 
 def write(opts):
     with Timer('loading'):
         data = tifffile.imread(opts.input)
     height, width = data.shape[:2]
+    data = st_2084(data, opts.peak_luminance)
     data *= 65535.0
     data = data.astype(numpy.uint16)
     with Timer('encoding'):
@@ -271,7 +296,8 @@ def write(opts):
                 xmp = img.info["xmp"]
                 if i == primary_index:
                     if i:
-                        lib.heif_context_set_primary_image(ctx.ctx, new_img_handle)
+                        lib.heif_context_set_primary_image(ctx.ctx,
+                                                           new_img_handle)
                     if kwargs.get("exif", -1) != -1:
                         exif = kwargs["exif"]
                         if isinstance(exif, Image.Exif):
