@@ -1,6 +1,6 @@
 # -*- conf -*-
 #
-# support for writing HEIF images that can be displayed on a PQ HDR-TV
+# support for writing HEIC images that can be displayed on a PQ HDR-TV
 # with a peak luminance of 1000 nits
 #
 # Requirements:
@@ -11,8 +11,8 @@
 # - exiftool
 #   
 [ART ImageIO]
-Label=HEIF (PQ HDR-TV 1000 nits)
-Extension=hif
+Label=HEIC (PQ HDR-TV 1000 nits)
+Extension=heic
 SaveFormat=heifhdr
 WriteCommand=python hif/heif_io.py -m write -p 1000
 Format=float

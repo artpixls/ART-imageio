@@ -125,7 +125,7 @@ def pq(a, inv):
     c3 = 2392.0 / 128.0
     if not inv:
         # assume 1.0 is 100 nits, normalise so that 1.0 is 10000 nits
-        a /= 100.0
+        a = numpy.clip(a / 100.0, 0.0, 1.0)
         # apply the PQ curve
         aa = numpy.power(a, m1)
         res = numpy.power((c1 + c2 * aa)/(1.0 + c3 * aa), m2)
