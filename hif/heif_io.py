@@ -20,6 +20,15 @@ except AttributeError:
 pillow_heif.register_avif_opener()
 
 
+def get_version():
+    def toint(p):
+        try:
+            return int(p)
+        except ValueError:
+            return 0
+    return tuple([toint(t) for t in pillow_heif.__version__.split('.')])
+
+
 @contextmanager
 def Timer(msg):
     try:
@@ -75,6 +84,32 @@ class NclxProfile:
         def xy(t): return tuple(map(lambda n: round(n, 3), t))
         return f'nclx: {self.color_primaries}/{self.transfer_characteristics}/{self.matrix_coefficients} - r: {xy(self.red_xy)}, g: {xy(self.green_xy)}, b: {xy(self.blue_xy)}, w: {xy(self.white_xy)}'
 
+    def pack(self):
+        if get_version() >= (0, 9, 1):
+            return {
+                'color_primaries' : self.color_primaries,
+                'transfer_characteristics' : self.transfer_characteristics,
+                'matrix_coefficients' : self.matrix_coefficients,
+                'full_range_flag' : 1,
+                'color_primary_red_x' : self.red_xy[0],
+                'color_primary_red_y' : self.red_xy[1],
+                'color_primary_green_x' : self.green_xy[0],
+                'color_primary_green_y' : self.green_xy[1],
+                'color_primary_blue_x' : self.blue_xy[0],
+                'color_primary_blue_y' : self.blue_xy[1],
+                'color_primary_white_x' : self.white_xy[0],
+                'color_primary_white_y' : self.white_xy[1]
+            }
+        else:
+            return struct.pack('BiiiBffffffff',
+                               1, self.color_primaries,
+                               self.transfer_characteristics,
+                               self.matrix_coefficients, 1,
+                               self.red_xy[0], self.red_xy[1],
+                               self.green_xy[0], self.green_xy[1],
+                               self.blue_xy[0], self.blue_xy[1],
+                               self.white_xy[0], self.white_xy[1]
+                               )
 # end of class NclxProfile
 
 sRGB_nclx = NclxProfile(
@@ -84,13 +119,11 @@ sRGB_nclx = NclxProfile(
      0.15000000596046448, 0.05999999865889549,
      0.3127000033855438, 0.32899999618530273))
 
-rec2100_pq_nclx = struct.pack('BiiiBffffffff',
-                              1, 9, 16, 9, 1,
+rec2100_pq_nclx = NclxProfile((1, 9, 16, 9, 1,
                               0.708, 0.292,
                               0.170, 0.797,
                               0.131, 0.046,
-                              0.3127, 0.3290
-                              )
+                              0.3127, 0.3290)).pack()
 
 rec2020_to_xyz = numpy.array([
     [0.6734241,  0.1656411,  0.1251286],
@@ -101,7 +134,22 @@ rec2020_to_xyz = numpy.array([
 
 def get_nclx(info):
     try:
-        return NclxProfile(struct.unpack('BiiiBffffffff', info['nclx_profile']))
+        data = info['nclx_profile']
+        if get_version() >= (0, 9, 1):
+            return NclxProfile((1, data['color_primaries'],
+                                data['transfer_characteristics'],
+                                data['matrix_coefficients'],
+                                1,
+                                data['color_primary_red_x'],
+                                data['color_primary_red_y'],
+                                data['color_primary_green_x'],
+                                data['color_primary_green_y'],
+                                data['color_primary_blue_x'],
+                                data['color_primary_blue_y'],
+                                data['color_primary_white_x'],
+                                data['color_primary_white_y']))
+        else:
+            return NclxProfile(struct.unpack('BiiiBffffffff', data))
     except:
         return None
 
