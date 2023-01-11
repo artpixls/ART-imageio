@@ -2,6 +2,7 @@
 
 import os, sys
 import argparse
+import math
 import numpy
 import tifffile
 import struct
@@ -46,8 +47,8 @@ def getopts():
     p.add_argument('width', nargs='?', default=0, type=int)
     p.add_argument('height', nargs='?', default=0, type=int)
     p.add_argument('-m', '--mode', choices=['read', 'write'], default='read')
-    #p.add_argument('-w', '--target-white-luminance', type=float, default=100.0)
     p.add_argument('-p', '--peak-luminance', type=float, default=1000.0)
+    p.add_argument('-t', '--transfer', choices=['pq', 'hlg'], default='pq')
     return p.parse_args()
 
 ACES_AP0_coords = ((0.735, 0.265),
@@ -119,11 +120,11 @@ sRGB_nclx = NclxProfile(
      0.15000000596046448, 0.05999999865889549,
      0.3127000033855438, 0.32899999618530273))
 
-rec2100_pq_nclx = NclxProfile((1, 9, 16, 9, 1,
-                              0.708, 0.292,
-                              0.170, 0.797,
-                              0.131, 0.046,
-                              0.3127, 0.3290)).pack()
+rec2100_nclx = NclxProfile((1, 9, 16, 9, 1,
+                            0.708, 0.292,
+                            0.170, 0.797,
+                            0.131, 0.046,
+                            0.3127, 0.3290))
 
 rec2020_to_xyz = numpy.array([
     [0.6734241,  0.1656411,  0.1251286],
@@ -215,12 +216,13 @@ def rec1886(a, inv):
 
 
 def hlg(a, inv):
+    scaling = 2 #10.0
     h_a = 0.17883277
     h_b = 1.0 - 4.0 * 0.17883277
     h_c = 0.5 - h_a * math.log(4.0 * h_a)
     if not inv:
         rgb = a
-        rgb /= 10.0
+        rgb /= scaling
         rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 1.0)
         rgb = numpy.where(rgb <= 1.0 / 12.0, numpy.sqrt(3.0 * rgb),
                           h_a * numpy.log(
@@ -230,7 +232,7 @@ def hlg(a, inv):
         rgb = a
         rgb = numpy.where(rgb <= 0.5, rgb * rgb / 3.0,
                           (numpy.exp((rgb - h_c)/ h_a) + h_b) / 12.0)
-        rgb *= 10
+        rgb *= scaling
         return rgb
 
 
@@ -313,14 +315,18 @@ def write(opts):
     with Timer('loading'):
         data = tifffile.imread(opts.input)
     height, width = data.shape[:2]
-    data = st_2084(data, opts.peak_luminance)
+    if opts.transfer == 'hlg':
+        data = hlg(data.reshape(-1), False).reshape(data.shape)
+    else:
+        data = st_2084(data, opts.peak_luminance)
     data *= 65535.0
     data = data.astype(numpy.uint16)
     with Timer('encoding'):
         heif_file = pillow_heif.from_bytes(mode="RGB;16",
                                            size=(width, height),
                                            data=data.tobytes())
-    heif_file.info['nclx_profile'] = rec2100_pq_nclx
+    rec2100_nclx.transfer_characteristics = 18 if opts.transfer == 'hlg' else 16
+    heif_file.info['nclx_profile'] = rec2100_nclx.pack()
     with Timer('saving'):
         ffi = pillow_heif.heif.ffi
         lib = pillow_heif.heif.lib
