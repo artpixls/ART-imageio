@@ -216,14 +216,13 @@ def rec1886(a, inv):
 
 
 def hlg(a, inv):
-    scaling = 2 #10.0
     h_a = 0.17883277
     h_b = 1.0 - 4.0 * 0.17883277
     h_c = 0.5 - h_a * math.log(4.0 * h_a)
     if not inv:
         rgb = a
-        rgb /= scaling
-        rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 1.0)
+        rgb /= 2.0
+        rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 12.0)
         rgb = numpy.where(rgb <= 1.0 / 12.0, numpy.sqrt(3.0 * rgb),
                           h_a * numpy.log(
                               numpy.fmax(12.0 * rgb - h_b, 1e-6)) + h_c)
@@ -232,7 +231,7 @@ def hlg(a, inv):
         rgb = a
         rgb = numpy.where(rgb <= 0.5, rgb * rgb / 3.0,
                           (numpy.exp((rgb - h_c)/ h_a) + h_b) / 12.0)
-        rgb *= scaling
+        rgb *= 2.0
         return rgb
 
 
