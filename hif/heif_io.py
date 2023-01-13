@@ -47,8 +47,9 @@ def getopts():
     p.add_argument('width', nargs='?', default=0, type=int)
     p.add_argument('height', nargs='?', default=0, type=int)
     p.add_argument('-m', '--mode', choices=['read', 'write'], default='read')
-    p.add_argument('-p', '--peak-luminance', type=float, default=1000.0)
-    p.add_argument('-t', '--transfer', choices=['pq', 'hlg'], default='pq')
+    p.add_argument('-t', '--transfer', choices=['pq', 'hlg', 'rec709'],
+                   default='pq')
+    p.add_argument('--pq-eetf', type=float, nargs=2)
     return p.parse_args()
 
 ACES_AP0_coords = ((0.735, 0.265),
@@ -174,7 +175,7 @@ def pq(a, inv):
     c3 = 2392.0 / 128.0
     if not inv:
         # assume 1.0 is 100 nits, normalise so that 1.0 is 10000 nits
-        a = numpy.clip(a / 100.0, 0.0, 1.0)
+        #a = numpy.clip(a / 100.0, 0.0, 1.0)
         # apply the PQ curve
         aa = numpy.power(a, m1)
         res = numpy.power((c1 + c2 * aa)/(1.0 + c3 * aa), m2)
@@ -182,7 +183,7 @@ def pq(a, inv):
         p = numpy.power(a, 1.0/m2)
         aa = numpy.fmax(p-c1, 0.0) / (c2 - c3 * p)
         res = numpy.power(aa, 1.0/m1)
-        res *= 100
+        #res *= 100
     return res
 
 
@@ -221,8 +222,8 @@ def hlg(a, inv):
     h_c = 0.5 - h_a * math.log(4.0 * h_a)
     if not inv:
         rgb = a
-        rgb /= 2.0
-        rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 12.0)
+        #rgb /= 12.0
+        rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 1.0)
         rgb = numpy.where(rgb <= 1.0 / 12.0, numpy.sqrt(3.0 * rgb),
                           h_a * numpy.log(
                               numpy.fmax(12.0 * rgb - h_b, 1e-6)) + h_c)
@@ -231,9 +232,9 @@ def hlg(a, inv):
         rgb = a
         rgb = numpy.where(rgb <= 0.5, rgb * rgb / 3.0,
                           (numpy.exp((rgb - h_c)/ h_a) + h_b) / 12.0)
-        rgb *= 2.0
+        #rgb *= 12.0
         return rgb
-
+    
 
 def linearize(data, nclx):
     if not nclx:
@@ -248,10 +249,10 @@ def linearize(data, nclx):
         data = srgb(data, True)
     elif nclx.transfer_characteristics == 16:
         # PQ
-        data = pq(data, True)
+        data = pq(data, True) * 100.0
     elif nclx.transfer_characteristics == 18:
         # HLG
-        data = hlg(data, True)
+        data = hlg(data, True) * 12.0
     else:
         pass
     return data.reshape(shape)
@@ -301,13 +302,64 @@ def read(opts):
         os.unlink(profile)
 
 
-def st_2084(data, peak_luminance):
-    # ITU-R BT.2390-2, section 5.3.1
-    scale = peak_luminance / 10000.0 * 59.49080238715383
-    data *= scale
+def pq_eetf(data, black, peak):
+    # ITU-R BT.2408-5, Annex 5
     shape = data.shape
-    res = pq(rec1886(rec709(data.reshape(-1), False, False), True), False)
+    data = data.reshape(-1)
+    E1 = data
+    min_lum = pq(numpy.array([black / 10000.0]), False)[0]
+    max_lum = pq(numpy.array([peak / 10000.0]), False)[0]
+    KS = 1.5 * max_lum - 0.5
+    b = min_lum
+    def T(A):
+        return (A - KS) / (1.0 - KS)
+    def P(B):
+        tb = T(B)
+        tb2 = tb * tb
+        tb3 = tb2 * tb
+        _2_tb3 = 2 * tb3
+        _3_tb2 = 3 * tb2
+        return (_2_tb3 - _3_tb2 + 1) * KS + (tb3 - 2 * tb2 + tb) * (1.0 - KS) \
+            + (_3_tb2 - _2_tb3) * max_lum
+    E2 = numpy.where(E1 < KS, E1, P(E1))
+    E3 = E2 + b * numpy.power(1.0 - E2, 4.0)
+    E4 = E3
+    data = E4.reshape(shape)
+    return data
+
+
+def pq_oetf(data):
+    # ITU-R BT.2390-10, section 5.3.1
+    gain = 5.0 # empirical
+    shape = data.shape
+    data = data.reshape(-1)
+    E = data * (gain / 100.0)
+    E1 = rec709(E * 59.5208, False, False)
+    scaling = 1.0 / 10000.0
+    F_D = numpy.clip((100.0 * scaling) * rec1886(E1, True), 0.0, 1.0)
+    res = pq(F_D, False)
+    res = res.reshape(shape)
+    return res
+
+
+def hlg_oetf(data):
+    # ITU-R BT.2390-10, section 6.1 (Figure 18)
+    shape = data.shape
+    data = data.reshape(-1)
+    # ensure that mid gray matches sdr
+    def ootf(a):
+        gamma = 1.2
+        return numpy.power(a, gamma-1.0) * a
+    scale = 0.3
+    res = hlg(ootf(data * scale), False)
     return res.reshape(shape)
+
+
+def rec709_oetf(data):
+    shape = data.shape
+    data = data.reshape(-1)
+    res = rec709(data, False)
+    return res.reshape(shape)  
 
 
 def write(opts):
@@ -315,16 +367,25 @@ def write(opts):
         data = tifffile.imread(opts.input)
     height, width = data.shape[:2]
     if opts.transfer == 'hlg':
-        data = hlg(data.reshape(-1), False).reshape(data.shape)
+        data = hlg_oetf(data)
+    elif opts.transfer == 'pq':
+        data = pq_oetf(data)
+        if opts.pq_eetf:
+            black, peak = min(*opts.pq_eetf), max(*opts.pq_eetf)
+            data = pq_eetf(data, black, peak)
     else:
-        data = st_2084(data, opts.peak_luminance)
+        data = rec709_oetf(data)
     data *= 65535.0
     data = data.astype(numpy.uint16)
     with Timer('encoding'):
         heif_file = pillow_heif.from_bytes(mode="RGB;16",
                                            size=(width, height),
                                            data=data.tobytes())
-    rec2100_nclx.transfer_characteristics = 18 if opts.transfer == 'hlg' else 16
+    rec2100_nclx.transfer_characteristics = {
+        'pq' : 16,
+        'hlg' : 18,
+        'rec709' : 1,
+        }[opts.transfer]
     heif_file.info['nclx_profile'] = rec2100_nclx.pack()
     with Timer('saving'):
         ffi = pillow_heif.heif.ffi
