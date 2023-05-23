@@ -11,6 +11,12 @@ import subprocess
 def getopts():
     p = argparse.ArgumentParser()
     p.add_argument('-m', '--mode', choices=['read', 'write'], required=True)
+    p.add_argument('-c', '--compression',
+                   choices=sorted(
+                       a[:-len('_COMPRESSION')] for a in
+                       dir(Imath.Compression)
+                       if a.endswith('_COMPRESSION')),
+                   default='ZIP')
     p.add_argument('input')
     p.add_argument('output')
     p.add_argument('width', nargs='?', default=0, type=int)
@@ -138,6 +144,8 @@ def write(opts):
     header['channels'] = {'R': Imath.Channel(tp),
                           'G': Imath.Channel(tp),
                           'B': Imath.Channel(tp)}
+    header['compression'] = Imath.Compression(
+        eval(f'Imath.Compression.{opts.compression}_COMPRESSION'))
     exr = OpenEXR.OutputFile(opts.output, header)
     exr.writePixels({'R' : r.tobytes(), 'G' : g.tobytes(), 'B' : b.tobytes()})
     exr.close()

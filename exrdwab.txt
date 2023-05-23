@@ -9,8 +9,8 @@
 # - exiftool
 #   
 [ART ImageIO]
-Label=EXR (ZIP compression)
+Label=EXR (DWA compression)
 Extension=exr
-ReadCommand=python exr/exr_io.py --mode read
-WriteCommand=python exr/exr_io.py --mode write
+SaveFormat=exrdwab
+WriteCommand=python exr/exr_io.py --mode write -c DWAB
 SaveProfile=exr/ap0-linear.arp
