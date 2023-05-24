@@ -17,6 +17,7 @@ def getopts():
                        dir(Imath.Compression)
                        if a.endswith('_COMPRESSION')),
                    default='ZIP')
+    p.add_argument('-H', '--half', action='store_true')
     p.add_argument('input')
     p.add_argument('output')
     p.add_argument('width', nargs='?', default=0, type=int)
@@ -131,6 +132,8 @@ def read(opts):
 
 def write(opts):
     data = tifffile.imread(opts.input)
+    if opts.half:
+        data = data.astype(numpy.half)
     r, g, b = data[...,0], data[...,1], data[...,2]
     header = OpenEXR.Header(data.shape[1], data.shape[0])
     # assume ACES AP0 primaries and white point
