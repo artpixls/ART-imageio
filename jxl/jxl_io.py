@@ -51,12 +51,33 @@ def srgb(a, inv):
                            numpy.power((a + 0.055) / 1.055, 2.4))
 
 
+def hlg(a, inv):
+    h_a = 0.17883277
+    h_b = 1.0 - 4.0 * 0.17883277
+    h_c = 0.5 - h_a * numpy.log(4.0 * h_a)
+    if not inv:
+        rgb = a
+        rgb /= 12.0
+        rgb = numpy.fmin(numpy.fmax(rgb, 1e-6), 1.0)
+        rgb = numpy.where(rgb <= 1.0 / 12.0, numpy.sqrt(3.0 * rgb),
+                          h_a * numpy.log(
+                              numpy.fmax(12.0 * rgb - h_b, 1e-6)) + h_c)
+        return rgb
+    else:
+        rgb = a
+        rgb = numpy.where(rgb <= 0.5, rgb * rgb / 3.0,
+                          (numpy.exp((rgb - h_c)/ h_a) + h_b) / 12.0)
+        rgb *= 12.0
+        return rgb   
+
+
 def get_profile(opts):
     res = subprocess.run(['jxlinfo', opts.input], stdout=subprocess.PIPE,
                          check=True, encoding='utf-8')
     profiles = {
         ('D65', 'sRGB primaries', 'sRGB transfer function') : ('rec709.icc', srgb),
-        ('D65', 'Rec.2100 primaries', 'PQ transfer function') : ('rec2100.icc', pq)
+        ('D65', 'Rec.2100 primaries', 'PQ transfer function') : ('rec2100.icc', pq),
+        ('D65', 'Rec.2100 primaries', 'HLG transfer function') : ('rec2100.icc', hlg)
         }
     for line in res.stdout.splitlines():
         if line.startswith('Color space: '):
