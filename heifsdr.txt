@@ -1,0 +1,18 @@
+# -*- conf -*-
+#
+# support for writing HEIC images in SDR (rec709) mode
+#
+# Requirements:
+# 
+# - Python with the following libraries: tifffile pillow_heif numpy
+#   (available via pip, e.g: python -m pip install tifffile)
+#
+# - exiftool
+#   
+[ART ImageIO]
+Label=HEIC (SDR)
+Extension=heic
+SaveFormat=heifsdr
+WriteCommand=python hif/heif_io.py -m write -t rec709
+Format=float
+SaveProfile=heifhdr/rec2020-lin.arp
