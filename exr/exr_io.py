@@ -62,12 +62,9 @@ def getprofile(header):
         def mkt(p):
             return (round(p.x, 3), round(p.y, 3))
         key = (mkt(c.red), mkt(c.green), mkt(c.blue), mkt(c.white))
-        fn = _profile_dict.get(key)
-        if fn is not None:
-            return fn
     except KeyError as e:
-        sys.stderr.write('ERROR: %s\n' % e)
-    return None
+        key = REC_709_coords
+    return _profile_dict.get(key)
 
 
 def compute_xyz_matrix(key):
@@ -102,7 +99,7 @@ def read(opts):
     box = header['dataWindow']
     width, height = box.max.x - box.min.x + 1, box.max.y - box.min.y + 1
     channels = header['channels']
-    assert len(channels) in (3, 4)
+    #assert len(channels) in (3, 4), channels
     assert 'R' in channels and 'G' in channels and 'B' in channels
     t = a_tp(channels['R'].type)
     rgb = numpy.dstack([numpy.frombuffer(d, t).reshape(height, width)
