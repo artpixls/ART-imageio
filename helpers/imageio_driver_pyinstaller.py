@@ -14,14 +14,12 @@ import PyInstaller.__main__
 def getopts():
     p = argparse.ArgumentParser()
     p.add_argument('-o', '--outdir', required=True, help='output directory')
-    ret = p.parse_args()
-    ret.imageio_dir = os.path.normpath(os.path.abspath(ret.imageio_dir))
-    return ret
+    return p.parse_args()
 
 
 def main():
     mydir = os.path.abspath(os.path.dirname(__file__))
-    imageio_dir = os.path.abspath(os.path.join(mydir), '..')
+    imageio_dir = os.path.abspath(os.path.join(mydir, '..'))
     opts = getopts()
     hidden_imports = []
     for (dirpath, dirnames, filenames) in os.walk(imageio_dir):
