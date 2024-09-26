@@ -1,0 +1,15 @@
+# -*- conf -*-
+#
+# support for writing JPEG HDR images with Gain maps
+#
+# Requirements:
+#
+# - tifffile, Pillow,
+#   and ultrahdr_app from https://github.com/google/libultrahdr
+#
+[ART ImageIO]
+Label=JPEG UltraHDR
+Extension=jpg
+SaveFormat=ultrahdr
+WriteCommand=python ultrahdr/ultrahdr_gen.py
+SaveProfile=ultrahdr/linear-rec709.arp
