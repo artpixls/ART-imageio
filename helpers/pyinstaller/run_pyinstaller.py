@@ -19,7 +19,7 @@ def getopts():
 
 def main():
     mydir = os.path.abspath(os.path.dirname(__file__))
-    imageio_dir = os.path.abspath(os.path.join(mydir, '..'))
+    imageio_dir = os.path.abspath(os.path.join(mydir, '..', '..'))
     opts = getopts()
     hidden_imports = []
     for (dirpath, dirnames, filenames) in os.walk(imageio_dir):
@@ -36,7 +36,7 @@ def main():
     print(';; directory is: %s' % os.getcwd())
 
     sep = os.pathsep
-    tool = os.path.join(mydir, 'imageio_driver.py')
+    tool = os.path.join(mydir, 'driver.py')
 
     args = ['--name=python', '--clean'] + hidden_imports + [tool]
     PyInstaller.__main__.run(args)    

@@ -1,0 +1,6 @@
+tifffile
+numpy
+pillow
+webp
+OpenEXR
+pillow_heif
