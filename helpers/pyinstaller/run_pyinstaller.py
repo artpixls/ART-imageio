@@ -7,7 +7,7 @@ using PyInstaller.
 needed to run the scripts)
 """
 
-import os, sys, argparse
+import os, sys, argparse, tempfile, glob
 import PyInstaller.__main__
 
 
@@ -22,24 +22,29 @@ def main():
     imageio_dir = os.path.abspath(os.path.join(mydir, '..', '..'))
     opts = getopts()
     hidden_imports = []
-    for (dirpath, dirnames, filenames) in os.walk(imageio_dir):
+    for fname in glob.glob(imageio_dir + '/*/*.py'):
+        dirpath = os.path.dirname(fname)
+        name = os.path.basename(fname)
         if dirpath != mydir:
-            for name in filenames:
-                if name.endswith('.py'):
-                    sys.path.append(dirpath)
-                    m = os.path.splitext(name)[0]
-                    hidden_imports.append('--hidden-import=' + m)
-        else:
-            dirnames[:] = []
-                
-    os.chdir(opts.outdir)
-    print(';; directory is: %s' % os.getcwd())
+            if name.endswith('.py'):
+                sys.path.append(dirpath)
+                m = os.path.splitext(name)[0]
+                hidden_imports.append('--hidden-import=' + m)
 
+    outdir = os.path.abspath(opts.outdir)
     sep = os.pathsep
     tool = os.path.join(mydir, 'driver.py')
 
-    args = ['--name=python', '--clean'] + hidden_imports + [tool]
-    PyInstaller.__main__.run(args)    
+    with tempfile.TemporaryDirectory() as d:
+        args = ['--name=python',
+                '--clean',
+                '--exclude-module=tkinter',
+                '--workpath=' + os.path.join(d, 'build'),
+                '--distpath=' + outdir,
+                '--specpath=' + d] + hidden_imports + \
+                (['--strip'] if sys.platform != 'win32' else []) + \
+                [tool]
+        PyInstaller.__main__.run(args)    
 
 
 if __name__ == '__main__':
