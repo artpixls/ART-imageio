@@ -117,17 +117,27 @@ def save_sdr(data, outname):
         | ((r * d).astype(numpy.uint32) << 0)
     with open(outname, 'wb') as out:
         out.write(packed.tobytes())
-    
+
+
+def read(filename):
+    data = tifffile.imread(filename)
+    h, w, p = data.shape
+    if w & 1:
+        data = numpy.delete(data, -1, 1)
+    if h & 1:
+        data = numpy.delete(data, -1, 0)
+    return data
+
 
 def main():
     opts = getopts()
-    hdrdata = tifffile.imread(opts.hdr)
+    hdrdata = read(opts.hdr)
     height, width, planes = hdrdata.shape
     hdrdata = numpy.fmax(hdrdata.reshape(-1), 0)
     if not opts.sdr:
         sdrdata = tonemap(hdrdata)
     else:
-        sdrdata = tifffile.imread(opts.sdr)
+        sdrdata = read(opts.sdr)
         h, w, p = sdrdata.shape
         assert height == h and width == w and planes == p
         sdrdata = numpy.fmax(sdrdata.reshape(-1), 0)
