@@ -124,7 +124,10 @@ def write(opts):
     fd, name = tempfile.mkstemp(suffix='.ppm')
     os.close(fd)
 
-    data = tifffile.imread(opts.input) * 65535.0
+    data = tifffile.imread(opts.input)
+    if not opts.hdr:
+        data = numpy.fmax(numpy.fmin(data, 1.0), 0.0)
+    data *= 65535.0
     data = data.astype(numpy.dtype(numpy.uint16).newbyteorder('>'))
     with open(name, 'wb') as out:
         out.write(b'P6 ')
