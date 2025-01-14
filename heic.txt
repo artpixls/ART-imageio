@@ -1,0 +1,15 @@
+# -*- conf -*-
+#
+# support for reading HEIF images 
+# Requirements:
+# 
+# - Python with the following libraries: tifffile pillow_heif numpy
+#   (available via pip, e.g: python -m pip install tifffile)
+#
+# - exiftool
+#   
+[ART ImageIO]
+Label=HEIC
+Extension=heic
+ReadCommand=python hif/heif_io.py
+Format=float
