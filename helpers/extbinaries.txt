@@ -1,0 +1,18 @@
+List of external binaries needed to use all the plugins
+=======================================================
+
+- exiftool
+  from: https://exiftool.org
+  needed by: all plugins
+
+- ultrahdr_app
+  from: https://github.com/google/libultrahdr
+  needed by: ultrahdr
+
+- avifenc
+  from: https://github.com/AOMediaCodec/libavif
+  needed by: avifhdr
+
+- jxlinfo, cjxl, djxl
+  from: https://github.com/libjxl/libjxl
+  needed by: jxl, jxlhdr
