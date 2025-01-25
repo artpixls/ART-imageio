@@ -69,6 +69,7 @@ jobs:
           sudo port install libpng
           sudo port install libyuv
           sudo rm -rf /Library/Frameworks/Mono.framework
+          sudo rm -rf /usr/local/opt
 
       - name: Create Python virtualenv
         run: |
