@@ -72,7 +72,7 @@ jobs:
       - name: Removing conflicting system libraries
         run: |
           sudo rm -rf /Library/Frameworks/Mono.framework
-          sudo rm -rf /usr/local/opt
+          sudo rm -rf /usr/local/opt/lib
 
       - name: Create Python virtualenv
         run: |
