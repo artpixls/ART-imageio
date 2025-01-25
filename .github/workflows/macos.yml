@@ -1,0 +1,205 @@
+name: macOS Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]
+        include:
+          - os: macos-13
+            arch: x64
+          - os: macos-14
+            arch: arm64
+      fail-fast: false
+        
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Get OS version
+        run: |
+          echo "OS_VERSION=$(sw_vers -productVersion | cut -d . -f 1,2)" >> $GITHUB_ENV
+
+      - name: Get version
+        run: |
+          cd repo
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "ART_IMGIO_VERSION=$GITHUB_REF_NAME" >> $GITHUB_ENV
+          else
+              echo "ART_IMGIO_VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
+          echo "ART_IMGIO_NAME=ART-imageio-bin-macOS-${{ matrix.arch }}" >> $GITHUB_ENV
+
+      - if: ${{ matrix.os == 'macos-13' }}
+        name: Install MacPorts x64
+        run: |          
+          wget https://github.com/macports/macports-base/releases/download/v2.10.5/MacPorts-2.10.5-13-Ventura.pkg
+          sudo installer -pkg MacPorts-2.10.5-13-Ventura.pkg -target /
+
+      - if: ${{ matrix.os == 'macos-14' }}
+        name: Install MacPorts arm64
+        run: |          
+          wget https://github.com/macports/macports-base/releases/download/v2.10.4/MacPorts-2.10.4-14-Sonoma.pkg
+          sudo installer -pkg MacPorts-2.10.4-14-Sonoma.pkg -target /
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          
+      - name: Install base ports
+        run: |          
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          sudo port install pkgconfig
+          sudo port install automake
+          sudo port install autoconf
+          sudo port install libtool
+          sudo port install cmake
+          sudo port install exiv2
+          sudo port install lcms2
+          sudo port install yasm
+          sudo port install python312
+          sudo port install libjpeg-turbo
+          sudo port install libpng
+          sudo port install libyuv
+
+      - name: Create Python virtualenv
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          python3.12 -m venv venv
+
+      - name: Install custom NumPy
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          git clone --branch v2.2.2 --depth 1 https://github.com/numpy/numpy.git
+          cd numpy
+          git submodule update --init
+          python -m pip install -r requirements/all_requirements.txt
+          python -m pip install . -Csetup-args=-Dblas=disabled -Csetup-args=-Dlapack=disabled
+          
+      - name: Install required Python packages
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          python -m pip install -r repo/helpers/python/requirements.txt
+          python -m pip install PyInstaller
+
+      - name: Build Python installer
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          python repo/helpers/pyinstaller/run_pyinstaller.py -o out
+          mkdir ${ART_IMGIO_NAME}
+          mv out/python3/python3 ${ART_IMGIO_NAME}
+          mv out/python3/_internal ${ART_IMGIO_NAME}
+
+      - name: Build ultrahdr binaries
+        run: |
+          ULTRAHDR_VERSION='1.4.0'
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          mkdir ultrahdr
+          cd ultrahdr
+          wget https://github.com/google/libultrahdr/archive/refs/tags/v${ULTRAHDR_VERSION}.tar.gz
+          tar xzf v${ULTRAHDR_VERSION}.tar.gz
+          mkdir build
+          cd build
+          /opt/local/bin/cmake -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 \
+            ../libultrahdr-${ULTRAHDR_VERSION}
+          make -j$(nproc)
+          cp -a ultrahdr_app ../../${ART_IMGIO_NAME}
+
+      - name: Build jxl binaries
+        run: |
+          JXL_VERSION='1.4.0'
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          mkdir jxl
+          cd jxl
+          wget https://github.com/libjxl/libjxl/archive/refs/tags/v${JXL_VERSION}.tar.gz
+          tar xzf v${JXL_VERSION}.tar.gz
+          cd libjxl-${JXL_VERSION}
+          ./deps.sh
+          cd ..
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DBUILD_SHARED_LIBS=0 \
+            -DJPEGXL_ENABLE_OPENEXR=0 \
+            -DJPEGXL_ENABLE_JNI=0 \
+            -DBUILD_TESTING=0 \
+            -DJPEGXL_ENABLE_BENCHMARK=0 \
+            -DJPEGXL_ENABLE_EXAMPLES=0 \
+            -DJPEGXL_ENABLE_JPEGLI=0 \
+            -DJPEGXL_ENABLE_SJPEG=0 \
+            -DJPEGXL_BUNDLE_LIBPNG=1 \
+            -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=0 \
+            -DJPEG_LIBRARY_RELEASE=/opt/local/lib/libjpeg.a \
+            ../libjxl-${JXL_VERSION}
+          make -j$(nproc)
+          cp -a tools/cjxl tools/djxl tools/jxlinfo ../../${ART_IMGIO_NAME}
+          
+      - name: Build avif binaries
+        run: |
+          AVIF_VERSION='1.1.1'
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          . venv/bin/activate
+          mkdir avif
+          cd avif
+          wget https://github.com/AOMediaCodec/libavif/archive/refs/tags/v${AVIF_VERSION}.tar.gz
+          tar xzf v${AVIF_VERSION}.tar.gz
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DAVIF_CODEC_AOM=LOCAL \
+            -DAVIF_BUILD_APPS=1 \
+            -DAVIF_ENABLE_GTEST=0 \
+            -DAVIF_ZLIBPNG=SYSTEM \
+            -DAVIF_JPEG=SYSTEM \
+            -DAVIF_LIBYUV=SYSTEM \
+            -DAVIF_CODEC_AOM_DECODE=1 \
+            -DAVIF_CODEC_AOM_ENCODE=1 \
+            -DLIBYUV_LIBRARY=/opt/local/lib/libyuv.a \
+            -DJPEG_LIBRARY_RELEASE=/opt/local/lib/libjpeg.a \
+            -DPNG_LIBRARY_RELEASE=/opt/local/lib/libpng.a \
+            -DZLIB_LIBRARY_RELEASE=/opt/local/lib/libz.a \
+            ../libavif-${AVIF_VERSION}
+          make -j$(nproc)
+          cp -a avifenc ../../${ART_IMGIO_NAME}
+
+      - name: Create bundle
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          ARTIFACT_NAME=${ART_IMGIO_NAME}.tar.gz
+          tar czf ${ARTIFACT_NAME} ${ART_IMGIO_NAME}
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "RELEASE_TAG=${ART_VERSION}" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=true" >> $GITHUB_ENV
+          else
+              echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          body: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: ${{ env.RELEASE_MAKE_LATEST }}
+          artifacts: ${{ env.ARTIFACT_NAME }}
