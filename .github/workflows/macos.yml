@@ -68,6 +68,7 @@ jobs:
           sudo port install libjpeg-turbo
           sudo port install libpng
           sudo port install libyuv
+          sudo rm -rf /Library/Frameworks/Mono.framework
 
       - name: Create Python virtualenv
         run: |
@@ -111,7 +112,8 @@ jobs:
           tar xzf v${ULTRAHDR_VERSION}.tar.gz
           mkdir build
           cd build
-          /opt/local/bin/cmake -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+          /opt/local/bin/cmake \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=0 \
             ../libultrahdr-${ULTRAHDR_VERSION}
