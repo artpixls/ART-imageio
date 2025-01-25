@@ -5,7 +5,7 @@
 # Requirements:
 # 
 # - Python with the following libraries: tifffile numpy 
-#   (all available via pip, e.g: python -m pip install tifffile)
+#   (all available via pip, e.g: python3 -m pip install tifffile)
 #
 # - the cjxl and djxl command-line tools from libjxl
 #   (https://github.com/libjxl/libjxl)
@@ -15,7 +15,7 @@
 [ART ImageIO]
 Label=JPEG-XL
 Extension=jxl
-ReadCommand=python jxl/jxl_io.py --mode read
-WriteCommand=python jxl/jxl_io.py --mode write
+ReadCommand=python3 jxl/jxl_io.py --mode read
+WriteCommand=python3 jxl/jxl_io.py --mode write
 Format=float
 SaveProfile=jxl/srgb.arp

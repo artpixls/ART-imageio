@@ -21,7 +21,7 @@ def main():
     mydir = os.path.abspath(os.path.dirname(__file__))
     imageio_dir = os.path.abspath(os.path.join(mydir, '..', '..'))
     opts = getopts()
-    hidden_imports = []
+    hidden_imports = ['--hidden-import=_cffi_backend']
     for fname in glob.glob(imageio_dir + '/*/*.py'):
         dirpath = os.path.dirname(fname)
         name = os.path.basename(fname)
@@ -35,13 +35,19 @@ def main():
     sep = os.pathsep
     tool = os.path.join(mydir, 'driver.py')
 
+    toexclude = [
+        'tkinter',
+        'matplotlib',
+        'markupsafe',
+    ]
+
     with tempfile.TemporaryDirectory() as d:
-        args = ['--name=python',
+        args = ['--name=python3',
                 '--clean',
-                '--exclude-module=tkinter',
                 '--workpath=' + os.path.join(d, 'build'),
                 '--distpath=' + outdir,
                 '--specpath=' + d] + hidden_imports + \
+                ['--exclude-module=' + m for m in toexclude] + \
                 (['--strip'] if sys.platform != 'win32' else []) + \
                 [tool]
         PyInstaller.__main__.run(args)    

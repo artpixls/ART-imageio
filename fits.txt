@@ -9,4 +9,4 @@
 [ART ImageIO]
 Label=FITS
 Extension=fit
-ReadCommand=python fits/fits_load.py
+ReadCommand=python3 fits/fits_load.py

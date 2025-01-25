@@ -4,7 +4,7 @@
 # Requirements:
 # 
 # - Python with the following libraries: tifffile, OpenEXR, numpy
-#   (all available via pip, e.g: python -m pip install tifffile)
+#   (all available via pip, e.g: python3 -m pip install tifffile)
 #
 # - exiftool
 #   
@@ -12,5 +12,5 @@
 Label=EXR (DWA compression)
 Extension=exr
 SaveFormat=exrdwab
-WriteCommand=python exr/exr_io.py --mode write -c DWAB
+WriteCommand=python3 exr/exr_io.py --mode write -c DWAB
 SaveProfile=exr/ap0-linear.arp

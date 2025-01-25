@@ -4,13 +4,13 @@
 # Requirements:
 # 
 # - Python with the following libraries: tifffile, OpenEXR, numpy
-#   (all available via pip, e.g: python -m pip install tifffile)
+#   (all available via pip, e.g: python3 -m pip install tifffile)
 #
 # - exiftool
 #   
 [ART ImageIO]
 Label=EXR (ZIP compression)
 Extension=exr
-ReadCommand=python exr/exr_io.py --mode read
-WriteCommand=python exr/exr_io.py --mode write
+ReadCommand=python3 exr/exr_io.py --mode read
+WriteCommand=python3 exr/exr_io.py --mode write
 SaveProfile=exr/ap0-linear.arp

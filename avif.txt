@@ -9,5 +9,5 @@
 [ART ImageIO]
 Label=AVIF
 Extension=avif
-ReadCommand=python hif/heif_io.py
+ReadCommand=python3 hif/heif_io.py
 Format=float

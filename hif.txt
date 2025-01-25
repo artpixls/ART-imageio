@@ -4,12 +4,12 @@
 # Requirements:
 # 
 # - Python with the following libraries: tifffile pillow_heif numpy
-#   (available via pip, e.g: python -m pip install tifffile)
+#   (available via pip, e.g: python3 -m pip install tifffile)
 #
 # - exiftool
 #   
 [ART ImageIO]
 Label=HEIF
 Extension=hif
-ReadCommand=python hif/heif_io.py
+ReadCommand=python3 hif/heif_io.py
 Format=float

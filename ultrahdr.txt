@@ -11,5 +11,5 @@
 Label=JPEG UltraHDR
 Extension=jpg
 SaveFormat=ultrahdr
-WriteCommand=python ultrahdr/ultrahdr_gen.py
+WriteCommand=python3 ultrahdr/ultrahdr_gen.py
 SaveProfile=ultrahdr/linear-rec709.arp
