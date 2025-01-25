@@ -68,6 +68,9 @@ jobs:
           sudo port install libjpeg-turbo
           sudo port install libpng
           sudo port install libyuv
+
+      - name: Removing conflicting system libraries
+        run: |
           sudo rm -rf /Library/Frameworks/Mono.framework
           sudo rm -rf /usr/local/opt
 
