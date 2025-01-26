@@ -64,20 +64,34 @@ jobs:
           sudo port install exiv2
           sudo port install lcms2
           sudo port install yasm
-          sudo port install python312
           sudo port install libjpeg-turbo
           sudo port install libpng
           sudo port install libyuv
+          sudo port install zstd
 
       - name: Removing conflicting system libraries
         run: |
           sudo rm -rf /Library/Frameworks/Mono.framework
           sudo rm -rf /usr/local/opt/lib
 
-      - name: Create Python virtualenv
+      - if: ${{ matrix.os == 'macos-14' }}
+        name: Install standalone Python arm64
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
-          python3.12 -m venv venv
+          wget https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.12.8+20250115-aarch64-apple-darwin-pgo+lto-full.tar.zst
+          zstdcat cpython-3.12.8+20250115-aarch64-apple-darwin-pgo+lto-full.tar.zst | tar xv
+          
+      - if: ${{ matrix.os == 'macos-13' }}
+        name: Install standalone Python x64
+        run: |
+          export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
+          wget https://github.com/astral-sh/python-build-standalone/releases/download/20250115/cpython-3.12.8+20250115-x86_64-apple-darwin-pgo+lto-full.tar.zst
+          zstdcat cpython-3.12.8+20250115-x86_64-apple-darwin-pgo+lto-full.tar.zst | tar xv
+
+      - name: Create Python virtualenv
+        run: |
+          python/install/bin/python3 -m venv venv
+          . venv/bin/activate
 
       - name: Install custom NumPy
         run: |
