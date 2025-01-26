@@ -73,6 +73,7 @@ jobs:
         run: |
           sudo rm -rf /Library/Frameworks/Mono.framework
           sudo rm -rf /usr/local/opt/lib
+          sudo rm -rf /usr/local/opt/giflib
 
       - if: ${{ matrix.os == 'macos-14' }}
         name: Install standalone Python arm64
