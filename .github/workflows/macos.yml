@@ -135,6 +135,7 @@ jobs:
             -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=0 \
+            -DUHDR_WRITE_XMP=1 \
             ../libultrahdr-${ULTRAHDR_VERSION}
           make -j$(nproc)
           cp -a ultrahdr_app ../../${ART_IMGIO_NAME}
