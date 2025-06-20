@@ -1,0 +1,188 @@
+name: Linux x64 Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Get version
+        run: |
+          cd repo
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "ART_IMGIO_VERSION=$GITHUB_REF_NAME" >> $GITHUB_ENV
+          else
+              echo "ART_IMGIO_VERSION=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          fi
+          echo "ART_IMGIO_NAME=ART-imageio-bin-linux64" >> $GITHUB_ENV
+
+      - name: Install base dependencies
+        run: |
+          sudo apt update
+          DEBIAN_FRONTEND=noninteractive sudo apt install -y \
+            git \
+            build-essential \
+            cmake \
+            curl \
+            pkg-config \
+            librsvg2-dev \
+            liblcms2-dev \
+            libtiff5-dev \
+            libinih-dev \
+            libbrotli-dev \
+            libexpat1-dev \
+            libexiv2-dev \
+            libyuv-dev \
+            libjpeg-dev \
+            libpng-dev \
+            zstd \
+            wget
+          sudo python3 -m pip install meson
+          wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
+          unzip ninja-linux.zip
+          sudo mv ninja /usr/local/bin
+
+      - name: Install standalone Python x64
+        run: |
+          wget https://github.com/astral-sh/python-build-standalone/releases/download/20250612/cpython-3.12.11+20250612-x86_64_v2-unknown-linux-gnu-pgo+lto-full.tar.zst
+          zstdcat cpython-3.12.11+20250612-x86_64_v2-unknown-linux-gnu-pgo+lto-full.tar.zst
+
+      - name: Create Python virtualenv
+        run: |
+          python/install/bin/python3 -m venv venv
+          . venv/bin/activate
+
+      - name: Install custom NumPy
+        run: |
+          . venv/bin/activate
+          git clone --branch v2.2.2 --depth 1 https://github.com/numpy/numpy.git
+          cd numpy
+          git submodule update --init
+          python -m pip install -r requirements/all_requirements.txt
+          python -m pip install . -Csetup-args=-Dblas=disabled -Csetup-args=-Dlapack=disabled
+          
+      - name: Install required Python packages
+        run: |
+          . venv/bin/activate
+          python -m pip install -r repo/helpers/python/requirements.txt
+          python -m pip install PyInstaller
+
+      - name: Build Python installer
+        run: |
+          . venv/bin/activate
+          python repo/helpers/pyinstaller/run_pyinstaller.py -o out
+          mkdir ${ART_IMGIO_NAME}
+          mv out/python3/python3 ${ART_IMGIO_NAME}
+          mv out/python3/_internal ${ART_IMGIO_NAME}
+
+      - name: Build ultrahdr binaries
+        run: |
+          ULTRAHDR_VERSION='1.4.0'
+          . venv/bin/activate
+          mkdir ultrahdr
+          cd ultrahdr
+          wget https://github.com/google/libultrahdr/archive/refs/tags/v${ULTRAHDR_VERSION}.tar.gz
+          tar xzf v${ULTRAHDR_VERSION}.tar.gz
+          mkdir build
+          cd build
+          cmake \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 \
+            -DUHDR_WRITE_XMP=1 \
+            ../libultrahdr-${ULTRAHDR_VERSION}
+          make -j$(nproc)
+          cp -a ultrahdr_app ../../${ART_IMGIO_NAME}
+
+      - name: Build jxl binaries
+        run: |
+          JXL_VERSION='0.11.1'
+          . venv/bin/activate
+          mkdir jxl
+          cd jxl
+          wget https://github.com/libjxl/libjxl/archive/refs/tags/v${JXL_VERSION}.tar.gz
+          tar xzf v${JXL_VERSION}.tar.gz
+          cd libjxl-${JXL_VERSION}
+          ./deps.sh
+          cd ..
+          mkdir build
+          cd build
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DBUILD_SHARED_LIBS=0 \
+            -DJPEGXL_ENABLE_OPENEXR=0 \
+            -DJPEGXL_ENABLE_JNI=0 \
+            -DBUILD_TESTING=0 \
+            -DJPEGXL_ENABLE_BENCHMARK=0 \
+            -DJPEGXL_ENABLE_EXAMPLES=0 \
+            -DJPEGXL_ENABLE_JPEGLI=0 \
+            -DJPEGXL_ENABLE_SJPEG=0 \
+            -DJPEGXL_BUNDLE_LIBPNG=1 \
+            -DJPEGXL_ENABLE_JPEGLI_LIBJPEG=0 \
+            -DJPEG_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libjpeg.a \
+            ../libjxl-${JXL_VERSION}
+          make -j$(nproc)
+          cp -a tools/cjxl tools/djxl tools/jxlinfo ../../${ART_IMGIO_NAME}
+          
+      - name: Build avif binaries
+        run: |
+          AVIF_VERSION='1.1.1'
+          . venv/bin/activate
+          mkdir avif
+          cd avif
+          wget https://github.com/AOMediaCodec/libavif/archive/refs/tags/v${AVIF_VERSION}.tar.gz
+          tar xzf v${AVIF_VERSION}.tar.gz
+          mkdir build
+          cd build
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=0 \
+            -DCMAKE_FIND_LIBRARY_SUFFIXES=.a \
+            -DAVIF_CODEC_AOM=LOCAL \
+            -DAVIF_BUILD_APPS=1 \
+            -DAVIF_ENABLE_GTEST=0 \
+            -DAVIF_ZLIBPNG=SYSTEM \
+            -DAVIF_JPEG=SYSTEM \
+            -DAVIF_LIBYUV=SYSTEM \
+            -DAVIF_CODEC_AOM_DECODE=1 \
+            -DAVIF_CODEC_AOM_ENCODE=1 \
+            -DLIBYUV_LIBRARY=/usr/lib/x86_64-linux-gnu/libyuv.a \
+            -DJPEG_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libjpeg.a \
+            -DPNG_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libpng.a \
+            -DZLIB_LIBRARY_RELEASE=/usr/lib/x86_64-linux-gnu/libz.a \
+            ../libavif-${AVIF_VERSION}
+          make -j$(nproc)
+          cp -a avifenc ../../${ART_IMGIO_NAME}
+
+      - name: Create bundle
+        run: |
+          ARTIFACT_NAME=${ART_IMGIO_NAME}.tar.gz
+          tar czf ${ARTIFACT_NAME} ${ART_IMGIO_NAME}
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+              echo "RELEASE_TAG=${ART_VERSION}" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=true" >> $GITHUB_ENV
+          else
+              echo "RELEASE_TAG=nightly" >> $GITHUB_ENV
+              echo "RELEASE_MAKE_LATEST=false" >> $GITHUB_ENV
+          fi
+
+      - name: Publish release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          body: ${{ env.RELEASE_TAG }}
+          allowUpdates: true
+          makeLatest: ${{ env.RELEASE_MAKE_LATEST }}
+          artifacts: ${{ env.ARTIFACT_NAME }}
