@@ -46,6 +46,7 @@ jobs:
             libjpeg-dev \
             libpng-dev \
             zstd \
+            yasm \
             wget
           sudo python3 -m pip install meson
           wget https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-linux.zip
