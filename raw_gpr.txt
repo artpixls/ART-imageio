@@ -1,0 +1,11 @@
+# -*- conf -*-
+#
+# support for reading GoPro GPR raw files
+#
+# Requirements:
+#
+# - gpr_tools app from https://github.com/gopro/gpr.git
+#
+[ART RAWImageIO]
+Extension=gpr
+ReadCommand=python3 ./raw/load_gpr_raw.py

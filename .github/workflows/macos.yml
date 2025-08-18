@@ -203,6 +203,19 @@ jobs:
           make -j$(nproc)
           cp -a avifenc ../../${ART_IMGIO_NAME}
 
+      - name: Build gpr_tools binary
+        run : |
+          mkdir gpr
+          cd gpr
+          git clone --depth 1 https://github.com/gopro/gpr.git
+          mkdir build
+          cd build
+          /opt/local/bin/cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            ../gpr
+          make -j$(nproc)
+          cp -a source/app/gpr_tools/gpr_tools ../../${ART_IMGIO_NAME}
+
       - name: Create bundle
         run: |
           export PATH=/opt/local/libexec/gnubin:/opt/local/bin:/opt/local/sbin:$PATH
